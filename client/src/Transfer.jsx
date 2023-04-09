@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { ethers } from "ethers";
 import server from "./server";
 
-function Transfer({ address, setBalance }) {
+function Transfer({ address, setBalance, provider, setAddressNonce, addressNonce }) {
   const [sendAmount, setSendAmount] = useState("");
   const [recipient, setRecipient] = useState("");
 
@@ -11,14 +12,27 @@ function Transfer({ address, setBalance }) {
     evt.preventDefault();
 
     try {
-      const {
-        data: { balance },
-      } = await server.post(`send`, {
+
+      if (!address || !recipient || !sendAmount) {
+        return;
+      }
+
+
+      const data = {
         sender: address,
-        amount: parseInt(sendAmount),
         recipient,
-      });
+        amount: parseInt(sendAmount),
+        nonce: addressNonce,
+      };
+
+      const signer = await provider.getSigner();
+      const sign = await signer.signMessage(JSON.stringify(data));
+
+      const {
+        data: { balance , nonce},
+      } = await server.post(`send`, {...data, sign});
       setBalance(balance);
+      setAddressNonce(nonce);
     } catch (ex) {
       alert(ex.response.data.message);
     }
